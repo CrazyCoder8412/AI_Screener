@@ -499,62 +499,70 @@ class GeminiClient {
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
         
-        try {
             // Gemini response path - JOIN ALL PARTS
-            let textResponse = data.candidates[0].content.parts.map(p => p.text || '').join(' ');
+            const rawText = data.candidates[0].content.parts.map(p => p.text || '').join(' ');
             
-            // Log to debug console
-            document.getElementById('debug-console').value = textResponse;
+            // Log to debug console for troubleshooting
+            document.getElementById('debug-console').value = rawText;
 
-            // AGGRESSIVE SCRUBBING: Remove all citation patterns [1], [cite: 1, 2], etc.
-            textResponse = textResponse
+            // --- SELF-HEALING JSON PARSER ---
+            
+            // 1. Handle restarts and scrub citations
+            let parts = rawText.split(/```(?:json)?/);
+            let cleaned = parts[parts.length - 1].trim();
+            cleaned = cleaned
                 .replace(/\[cite:.*?\]/g, '') 
-                .replace(/\[\d+(?:,\s*\d+)*\]/g, '')
-                .replace(/```json/g, '')
-                .replace(/```/g, '');
-            
-            // TRUNCATION FIX: If the JSON is cut off, try to close it
-            if (textResponse.includes('[') && !textResponse.includes(']')) {
-                textResponse = textResponse.trim() + '"}]';
-            } else if (textResponse.includes('{') && !textResponse.includes('}')) {
-                textResponse = textResponse.trim() + '"}';
-            }
-            
-            // HELPER: Aggressive Cleanup
-            const cleanJson = (str) => {
-                return str
-                    .replace(/,\s*([\]}])/g, '$1') // Remove trailing commas
-                    .replace(/\$([\d,.]+)/g, '$1')  // Remove $ from inside strings
-                    .replace(/(\w+):/g, '"$1":')     // Ensure keys are quoted (if missed)
-                    .replace(/\\n/g, ' ')           // Replace escaped newlines
-                    .replace(/\n/g, ' ');           // Replace raw newlines
-            };
+                .replace(/\[\d+(?:,\s*\d+)*\]/g, '');
 
-            // EXTRACTION LOGIC: Find the most significant JSON structure
-            const firstBracket = textResponse.indexOf('[');
-            const firstBrace = textResponse.indexOf('{');
-            
-            let result = null;
-
-            // Case A: Look for an array first
-            if (firstBracket !== -1) {
-                try {
-                    const lastBracket = textResponse.lastIndexOf(']');
-                    const segment = cleanJson(textResponse.substring(firstBracket, lastBracket + 1));
-                    result = JSON.parse(segment);
-                } catch (e) { console.warn("Array parse failed, trying object..."); }
+            // 2. Find start of structure
+            const firstBracket = cleaned.indexOf('[');
+            const firstBrace = cleaned.indexOf('{');
+            let startIdx = -1;
+            if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+                startIdx = firstBracket;
+            } else if (firstBrace !== -1) {
+                startIdx = firstBrace;
             }
 
-            // Case B: Look for an object
-            if (!result && firstBrace !== -1) {
-                try {
-                    const lastBrace = textResponse.lastIndexOf('}');
-                    const segment = cleanJson(textResponse.substring(firstBrace, lastBrace + 1));
-                    result = JSON.parse(segment);
-                } catch (e) { console.error("Object parse failed:", e); }
+            if (startIdx === -1) throw new Error("No JSON structure found in AI response");
+            let segment = cleaned.substring(startIdx);
+            
+            // 3. Depth tracking and repair
+            let stack = [];
+            let inString = false;
+            let escaped = false;
+            let endIdx = -1;
+
+            for (let i = 0; i < segment.length; i++) {
+                const char = segment[i];
+                if (char === '"' && !escaped) inString = !inString;
+                if (!inString) {
+                    if (char === '[' || char === '{') stack.push(char === '[' ? ']' : '}');
+                    if (char === ']' || char === '}') stack.pop();
+                    if (stack.length === 0 && i > 0) {
+                        endIdx = i;
+                        break;
+                    }
+                }
+                escaped = (char === '\\' && !escaped);
             }
 
-            if (!result) throw new Error("Format not found");
+            let finalSegment = endIdx !== -1 ? segment.substring(0, endIdx + 1) : segment;
+
+            // 4. Auto-repair truncation
+            if (endIdx === -1) {
+                if (inString) finalSegment += '"';
+                while (stack.length > 0) {
+                    finalSegment += stack.pop();
+                }
+            }
+
+            // 5. Final JSON Cleanup
+            const finalJson = finalSegment
+                .replace(/,\s*([\]}])/g, '$1') // Trailing commas
+                .replace(/(\r\n|\n|\r)/gm, " "); // Newlines in strings
+
+            let result = JSON.parse(finalJson);
 
             // AUTO-MAPPING: If it's an object containing an array, return the array
             if (!Array.isArray(result) && typeof result === 'object') {
@@ -564,8 +572,8 @@ class GeminiClient {
             
             return result;
         } catch (e) {
-            console.error("Failed to parse Gemini response:", data);
-            throw new Error("Invalid AI response format");
+            console.error("Failed to parse Gemini response:", e, data);
+            throw new Error("Invalid AI response format: " + e.message);
         }
     }
 }
