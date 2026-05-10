@@ -509,8 +509,19 @@ class GeminiClient {
             // --- SELF-HEALING JSON PARSER ---
             
             // 1. Handle restarts and scrub citations
-            let parts = rawText.split(/```(?:json)?/);
-            let cleaned = parts[parts.length - 1].trim();
+            let rawParts = rawText.split(/```(?:json)?/);
+            let cleaned = "";
+            
+            // Search parts from end to beginning for a JSON-like structure
+            for (let i = rawParts.length - 1; i >= 0; i--) {
+                const p = rawParts[i].trim();
+                if (p.includes('[') || p.includes('{')) {
+                    cleaned = p;
+                    break;
+                }
+            }
+            if (!cleaned) cleaned = rawText.trim();
+
             cleaned = cleaned
                 .replace(/\[cite:.*?\]/g, '') 
                 .replace(/\[\d+(?:,\s*\d+)*\]/g, '');
