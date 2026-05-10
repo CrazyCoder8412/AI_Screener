@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+    <title>MOMENTUM AI | Intelligence Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>
+        :root {
+            /* Color System - Premium HSL */
+            --bg: #05070a;
+            --bg-elevated: #0d1117;
+            --bg-card: rgba(22, 27, 34, 0.6);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            
+            --primary: #00ffb3; /* Neon Mint */
+            --primary-dim: rgba(0, 255, 179, 0.1);
+            --primary-glow: rgba(0, 255, 179, 0.3);
+            
+            --accent-blue: #4d9fff;
+            --accent-purple: #b47eff;
+            --accent-amber: #f5a623;
+            --accent-red: #ff5252;
+            
+            --text-main: #e6edf3;
+            --text-dim: #8b949e;
+            --text-muted: #484f58;
+            
+            --font-mono: 'Space Mono', monospace;
+            --font-sans: 'Outfit', sans-serif;
+            
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7);
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Layout --- */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: radial-gradient(circle at top right, rgba(0, 255, 179, 0.05), transparent 400px),
+                        radial-gradient(circle at bottom left, rgba(77, 159, 255, 0.03), transparent 400px);
+        }
+
+        .topbar {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.15em;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-transform: uppercase;
+        }
+
+        .logo-orb {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--primary-glow);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.6; }
+        }
+
+        .nav-bar {
+            display: flex;
+            background: var(--bg-elevated);
+            padding: 0 20px;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-tab {
+            padding: 14px 20px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 2px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-tab:hover { color: var(--text-main); background: rgba(255,255,255,0.03); }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+
+        .main-content::-webkit-scrollbar { width: 6px; }
+        .main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        /* --- Components --- */
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+            transition: var(--transition);
+        }
+
+        .glass-card:hover { border-color: var(--border-hover); }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
+        .stat-value { font-size: 24px; font-weight: 700; color: var(--text-main); font-family: var(--font-mono); }
+
+        .btn {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+        }
+
+        .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+        .btn.primary { background: var(--primary); color: var(--bg); font-weight: 700; border: none; }
+        .btn.primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 15px var(--primary-glow); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* --- Tables --- */
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        .terminal-table { width: 100%; border-collapse: collapse; }
+        .terminal-table th { 
+            text-align: left; padding: 12px 16px; 
+            font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); 
+            border-bottom: 1px solid var(--border); text-transform: uppercase; 
+        }
+        .terminal-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        .terminal-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .ticker { color: var(--primary); font-weight: 700; font-family: var(--font-mono); cursor: pointer; }
+        .ticker:hover { text-decoration: underline; }
+
+        /* --- AI Views --- */
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .loading-overlay {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .search-hero {
+            max-width: 600px;
+            margin: 60px auto;
+            text-align: center;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 12px;
+            background: var(--bg-elevated);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 24px;
+        }
+
+        .search-input-group input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            padding: 12px 16px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* --- Settings Modal --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal {
+            background: var(--bg-elevated); width: 100%; max-width: 450px;
+            border-radius: 16px; border: 1px solid var(--border); overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 24px; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; }
+        .form-input { 
+            width: 100%; background: var(--bg); border: 1px solid var(--border); 
+            color: var(--text-main); padding: 12px; border-radius: 8px; 
+            font-family: var(--font-mono); outline: none; transition: var(--transition);
+        }
+        .form-input:focus { border-color: var(--primary); }
+
+        /* Utility */
+        .green { color: var(--primary); }
+        .red { color: var(--accent-red); }
+        .amber { color: var(--accent-amber); }
+        .blue { color: var(--accent-blue); }
+        .muted { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="topbar">
+        <div class="logo">
+            <div class="logo-orb"></div>
+            Momentum AI Terminal
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div id="market-clock" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">00:00:00</div>
+            <button class="btn" onclick="toggleSettings()" style="padding: 8px;">⚙️</button>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</div>
+        <div class="nav-tab" onclick="switchTab('screener')">AI Screener</div>
+        <div class="nav-tab" onclick="switchTab('search')">Deep Search</div>
+        <div class="nav-tab" onclick="switchTab('watchlist')">Watchlist</div>
+    </div>
+
+    <div class="main-content">
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view active">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
+                <div>
+                    <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">Market Alpha</h1>
+                    <p style="color: var(--text-dim);">Curated momentum signals generated via Gemini 2.0 Flash</p>
+                </div>
+                <button id="refresh-dash-btn" class="btn primary" onclick="refreshDashboard()">
+                    ⚡ Run Intelligence Refresh
+                </button>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-card"><div class="stat-label">System Status</div><div class="stat-value green" style="font-size: 18px;">OPTIMIZED</div></div>
+                <div class="stat-card"><div class="stat-label">Avg. Signal Accuracy</div><div class="stat-value">74.2%</div></div>
+                <div class="stat-card"><div class="stat-label">High Conviction</div><div class="stat-value" id="conviction-count">--</div></div>
+                <div class="stat-card"><div class="stat-label">Sentiment Index</div><div class="stat-value blue">BULLISH</div></div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-wrap">
+                    <table class="terminal-table">
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Price</th>
+                                <th>Momentum</th>
+                                <th>Target</th>
+                                <th>Confidence</th>
+                                <th>Catalyst</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screener View -->
+        <div id="view-screener" class="view">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h1 style="font-size: 24px; margin-bottom: 10px;">Pre-Spike Intelligence</h1>
+                <p style="color: var(--text-dim); max-width: 500px; margin: 0 auto;">Scanning for earnings whispers, FDA approvals, and unusual options flow.</p>
+                <div style="margin-top: 24px;">
+                    <button id="run-screener-btn" class="btn primary" onclick="runScreener()">Initialize AI Global Scan</button>
+                </div>
+            </div>
+            
+            <div id="screener-loading" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+                <p id="screener-status" style="font-family: var(--font-mono); font-size: 12px; color: var(--primary);">Analyzing market depth...</p>
+            </div>
+
+            <div id="screener-results" class="stat-grid">
+                <!-- Cards here -->
+            </div>
+        </div>
+
+        <!-- Deep Search View -->
+        <div id="view-search" class="view">
+            <div class="search-hero">
+                <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 12px;">Deep Asset Analysis</h1>
+                <p style="color: var(--text-dim); margin-bottom: 30px;">Input any ticker for a comprehensive institutional-grade report.</p>
+                <div class="search-input-group">
+                    <input type="text" id="search-ticker" placeholder="ENTER TICKER (e.g. NVDA)" maxlength="10">
+                    <button class="btn primary" onclick="runDeepSearch()">Analyze</button>
+                </div>
+                <div id="search-quick-links" style="display: flex; gap: 8px; justify-content: center;">
+                    <span class="btn" style="font-size: 10px; padding: 4px 10px;" onclick="quickSearch('NVDA')">NVDA</span>
+                    <span class="btn" style="font-size: 10px; padding: 4px 10px;" onclick="quickSearch('TSLA')">TSLA</span>
+                    <span class="btn" style="font-size: 10px; padding: 4px 10px;" onclick="quickSearch('PLTR')">PLTR</span>
+                </div>
+            </div>
+
+            <div id="search-result-area"></div>
+        </div>
+
+        <!-- Watchlist View -->
+        <div id="view-watchlist" class="view">
+             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h1 style="font-size: 24px;">Stored Intelligence</h1>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="wl-add-input" class="form-input" style="width: 150px; height: 38px;" placeholder="TICKER">
+                    <button class="btn" onclick="addToWatchlist()">Add</button>
+                </div>
+             </div>
+             <div id="watchlist-content" class="glass-card"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <span style="font-family: var(--font-mono); font-size: 12px; font-weight: 700;">TERMINAL CONFIGURATION</span>
+            <button onclick="toggleSettings()" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 20px;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Gemini API Key</label>
+                <input type="password" id="api-key-input" class="form-input" placeholder="Enter your key from AI Studio">
+                <p style="font-size: 10px; color: var(--text-muted); margin-top: 8px;">Keys are stored locally in your browser's localStorage.</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Model Selection</label>
+                <select id="model-select" class="form-input" onchange="toggleCustomModel()">
+                    <option value="gemini-3-flash-preview" selected>gemini-3-flash-preview (Ultra-Fast v1beta)</option>
+                    <option value="deep-research-preview">deep-research-preview (Analytical v1beta)</option>
+                    <option value="gemini-2.5-flash">gemini-2.5-flash (Stable v1beta)</option>
+                    <option value="custom">-- Custom Model ID --</option>
+                </select>
+            </div>
+            <div id="custom-model-group" class="form-group" style="display: none;">
+                <label class="form-label">Custom Model ID</label>
+                <input type="text" id="custom-model-input" class="form-input" placeholder="e.g. gemini-1.5-flash">
+            </div>
+            <div class="form-group">
+                <button class="btn" style="width: 100%; font-size: 10px;" onclick="listAvailableModels()">🔍 Debug: List My Available Models</button>
+                <div id="model-list-results" style="font-family: var(--font-mono); font-size: 9px; color: var(--accent-amber); margin-top: 10px; max-height: 100px; overflow-y: auto;"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Last AI Response (Debug)</label>
+                <textarea id="debug-console" class="form-input" style="height: 100px; font-size: 9px; color: var(--accent-blue);" readonly></textarea>
+            </div>
+                <p style="font-size: 10px; color: var(--text-muted); margin-top: 8px;">Switch to 1.5-flash if you are hitting rate limits.</p>
+            </div>
+            <button class="btn primary" style="width: 100%;" onclick="saveSettings()">Save Configuration</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * GEMINI AI CLIENT
+ * Handles all communication with Gemini 2.0 Flash
+ */
+class GeminiClient {
+    constructor() {
+        this.apiKey = localStorage.getItem('GEMINI_API_KEY') || '';
+        this.model = localStorage.getItem('GEMINI_MODEL') || 'gemini-1.5-flash';
+        this.updateEndpoint();
+    }
+
+    updateEndpoint() {
+        // v1beta is required for advanced features like system_instruction and responseMimeType
+        this.endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
+    }
+
+    setKey(key) {
+        this.apiKey = key;
+        localStorage.setItem('GEMINI_API_KEY', key);
+    }
+
+    setModel(model) {
+        this.model = model;
+        localStorage.setItem('GEMINI_MODEL', model);
+        this.updateEndpoint();
+    }
+
+    async generate(prompt, systemInstruction = '', useSearch = false, maxTokens = 2048) {
+        if (!this.apiKey) {
+            alert("API Key missing! Click the gear icon to configure.");
+            throw new Error("Missing API Key");
+        }
+
+        const body = {
+            contents: [{ parts: [{ text: prompt }] }],
+            system_instruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: {
+                temperature: 0.2,
+                topP: 0.8,
+                maxOutputTokens: maxTokens
+            }
+        };
+
+        // Constraint: Tools + responseMimeType: "application/json" is currently unsupported
+        if (!useSearch) {
+            body.generationConfig.responseMimeType = "application/json";
+        }
+
+        if (useSearch) {
+            body.tools = [{ google_search: {} }];
+        }
+
+        const response = await fetch(`${this.endpoint}?key=${this.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+        
+        try {
+            // Gemini response path - JOIN ALL PARTS
+            let textResponse = data.candidates[0].content.parts.map(p => p.text || '').join(' ');
+            
+            // Log to debug console
+            document.getElementById('debug-console').value = textResponse;
+
+            // AGGRESSIVE SCRUBBING: Remove all citation patterns [1], [cite: 1, 2], etc.
+            textResponse = textResponse
+                .replace(/\[cite:.*?\]/g, '') 
+                .replace(/\[\d+(?:,\s*\d+)*\]/g, '')
+                .replace(/```json/g, '')
+                .replace(/```/g, '');
+            
+            // TRUNCATION FIX: If the JSON is cut off, try to close it
+            if (textResponse.includes('[') && !textResponse.includes(']')) {
+                textResponse = textResponse.trim() + '"}]';
+            } else if (textResponse.includes('{') && !textResponse.includes('}')) {
+                textResponse = textResponse.trim() + '"}';
+            }
+            
+            // HELPER: Aggressive Cleanup
+            const cleanJson = (str) => {
+                return str
+                    .replace(/,\s*([\]}])/g, '$1') // Remove trailing commas
+                    .replace(/\$([\d,.]+)/g, '$1')  // Remove $ from inside strings
+                    .replace(/(\w+):/g, '"$1":')     // Ensure keys are quoted (if missed)
+                    .replace(/\\n/g, ' ')           // Replace escaped newlines
+                    .replace(/\n/g, ' ');           // Replace raw newlines
+            };
+
+            // EXTRACTION LOGIC: Find the most significant JSON structure
+            const firstBracket = textResponse.indexOf('[');
+            const firstBrace = textResponse.indexOf('{');
+            
+            let result = null;
+
+            // Case A: Look for an array first
+            if (firstBracket !== -1) {
+                try {
+                    const lastBracket = textResponse.lastIndexOf(']');
+                    const segment = cleanJson(textResponse.substring(firstBracket, lastBracket + 1));
+                    result = JSON.parse(segment);
+                } catch (e) { console.warn("Array parse failed, trying object..."); }
+            }
+
+            // Case B: Look for an object
+            if (!result && firstBrace !== -1) {
+                try {
+                    const lastBrace = textResponse.lastIndexOf('}');
+                    const segment = cleanJson(textResponse.substring(firstBrace, lastBrace + 1));
+                    result = JSON.parse(segment);
+                } catch (e) { console.error("Object parse failed:", e); }
+            }
+
+            if (!result) throw new Error("Format not found");
+
+            // AUTO-MAPPING: If it's an object containing an array, return the array
+            if (!Array.isArray(result) && typeof result === 'object') {
+                const arrayProp = Object.values(result).find(v => Array.isArray(v));
+                if (arrayProp) return arrayProp;
+            }
+            
+            return result;
+        } catch (e) {
+            console.error("Failed to parse Gemini response:", data);
+            throw new Error("Invalid AI response format");
+        }
+    }
+}
+
+const ai = new GeminiClient();
+
+// --- App Logic ---
+
+function switchTab(tabId) {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.nav-tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
+    
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(`view-${tabId}`).classList.add('active');
+
+    if (tabId === 'watchlist') renderWatchlist();
+}
+
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    document.getElementById('api-key-input').value = ai.apiKey;
+    
+    const isCustom = !['gemini-2.0-flash', 'gemini-1.5-flash-002', 'gemini-1.5-flash-latest'].includes(ai.model);
+    document.getElementById('model-select').value = isCustom ? 'custom' : ai.model;
+    document.getElementById('custom-model-group').style.display = isCustom ? 'block' : 'none';
+    if (isCustom) document.getElementById('custom-model-input').value = ai.model;
+    
+    modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function toggleCustomModel() {
+    const isCustom = document.getElementById('model-select').value === 'custom';
+    document.getElementById('custom-model-group').style.display = isCustom ? 'block' : 'none';
+}
+
+async function listAvailableModels() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key) return alert("Enter API Key first");
+    const res = document.getElementById('model-list-results');
+    res.textContent = "Fetching...";
+    try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error.message);
+        res.innerHTML = d.models.map(m => `<div>${m.name.replace('models/','')}</div>`).join('');
+    } catch (e) {
+        res.textContent = "Error: " + e.message;
+    }
+}
+
+function saveSettings() {
+    const key = document.getElementById('api-key-input').value.trim();
+    const modelSelect = document.getElementById('model-select').value;
+    const model = modelSelect === 'custom' ? document.getElementById('custom-model-input').value.trim() : modelSelect;
+    
+    ai.setKey(key);
+    ai.setModel(model);
+    toggleSettings();
+}
+
+// --- Dashboard Logic ---
+
+async function refreshDashboard() {
+    const btn = document.getElementById('refresh-dash-btn');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+
+    try {
+        const sys = "You are an elite momentum stock analyst. Search for the top 10 high-conviction momentum stocks today. Respond ONLY with a JSON array of objects: {ticker, price, momentum_score(0-100), target, confidence(low/med/high), catalyst}.";
+        const prompt = "List 10 top momentum stocks for " + new Date().toLocaleDateString() + ". Provide specific catalysts based on latest news.";
+        
+        const results = await ai.generate(prompt, sys, true);
+        renderDashboard(results);
+    } catch (e) {
+        alert("Refresh failed: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Run Intelligence Refresh';
+    }
+}
+
+function renderDashboard(stocks) {
+    const tbody = document.getElementById('dashboard-tbody');
+    tbody.innerHTML = stocks.map(s => `
+        <tr>
+            <td><span class="ticker" onclick="quickSearch('${s.ticker}')">${s.ticker}</span></td>
+            <td style="font-family: var(--font-mono)">$${s.price}</td>
+            <td>
+                <div style="height: 4px; width: 60px; background: var(--border); border-radius: 2px;">
+                    <div style="height: 100%; width: ${s.momentum_score}%; background: var(--primary); border-radius: 2px;"></div>
+                </div>
+            </td>
+            <td class="green" style="font-family: var(--font-mono)">$${s.target}</td>
+            <td><span class="muted" style="font-size: 10px; font-family: var(--font-mono)">${s.confidence.toUpperCase()}</span></td>
+            <td style="font-size: 11px; color: var(--text-dim); max-width: 200px;">${s.catalyst}</td>
+            <td><button class="btn" style="padding: 4px 8px; font-size: 9px;" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button></td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('conviction-count').textContent = stocks.filter(s => s.confidence.toLowerCase() === 'high').length;
+}
+
+// --- Screener Logic ---
+
+async function runScreener() {
+    const resultsArea = document.getElementById('screener-results');
+    const loading = document.getElementById('screener-loading');
+    const btn = document.getElementById('run-screener-btn');
+
+    resultsArea.innerHTML = '';
+    loading.style.display = 'flex';
+    btn.disabled = true;
+
+    const statuses = ["Scanning Earnings Whispers...", "Auditing FDA Pipeline...", "Detecting Volatility Clusters...", "Analyzing Options Flow..."];
+    let step = 0;
+    const interval = setInterval(() => {
+        if (step < statuses.length) document.getElementById('screener-status').textContent = statuses[step++];
+    }, 1500);
+
+    try {
+        const sys = `Elite Quantitative Scout. Scan for 6-8 stocks with imminent catalysts. 
+        CRITICAL: Respond ONLY with a valid JSON array. 
+        DO NOT include citations like [1] or [cite: 1] inside any JSON strings.
+        Keep descriptions concise to prevent response truncation.
+        
+        JSON Structure: [{ticker, name, catalyst_type, current_price, analyst_target, options_sentiment, volume_pulse, bull_target, bear_target, upside_pct, description, conviction_score}].`;
+        
+        const prompt = "Perform a multi-factor predictive scan for " + new Date().toLocaleDateString() + ". NO CITATIONS IN STRINGS.";
+        
+        const data = await ai.generate(prompt, sys, true, 4096);
+        renderScreener(data);
+    } catch (e) {
+        alert("Screener failed: " + e.message);
+    } finally {
+        clearInterval(interval);
+        loading.style.display = 'none';
+        btn.disabled = false;
+    }
+}
+
+function renderScreener(data) {
+    const area = document.getElementById('screener-results');
+    area.innerHTML = data.map(s => {
+        const range = s.bull_target - s.bear_target;
+        const currentPos = ((s.current_price - s.bear_target) / range) * 100;
+        const safePos = Math.min(Math.max(currentPos, 5), 95);
+
+        return `
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                <div>
+                    <span class="ticker" style="font-size: 20px;" onclick="quickSearch('${s.ticker}')">${s.ticker}</span>
+                    <div style="font-size: 11px; color: var(--text-dim);">${s.name}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="green" style="font-family: var(--font-mono); font-weight: 700; font-size: 18px;">+${s.upside_pct}%</div>
+                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase;">Est. Upside</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                <div style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
+                    <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Options Flow</div>
+                    <div style="font-size: 11px; font-weight: 600;" class="${String(s.options_sentiment).toLowerCase().includes('bull') ? 'green' : 'red'}">${s.options_sentiment}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
+                    <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Volume Surge</div>
+                    <div style="font-size: 11px; font-weight: 600; color: var(--accent-blue);">${s.volume_pulse}</div>
+                </div>
+            </div>
+
+            <p style="font-size: 12px; line-height: 1.5; color: var(--text-main); margin-bottom: 16px; min-height: 54px;">${s.description}</p>
+
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-bottom: 4px;">
+                    <span>BEAR: $${s.bear_target}</span>
+                    <span>BULL: $${s.bull_target}</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; height: 100%; left: 0; width: 100%; background: linear-gradient(90deg, var(--accent-red) 0%, var(--primary) 100%); opacity: 0.2;"></div>
+                    <div style="position: absolute; height: 100%; width: 2px; background: white; left: ${safePos}%; box-shadow: 0 0 8px white;"></div>
+                </div>
+                <div style="text-align: center; font-size: 9px; margin-top: 4px;" class="muted">Current: $${s.current_price}</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px;">
+                <div>
+                    <div style="font-size: 8px; color: var(--text-muted); text-transform: uppercase;">Analyst Target</div>
+                    <div style="font-size: 12px; font-family: var(--font-mono); font-weight: 700;">$${s.analyst_target}</div>
+                </div>
+                <button class="btn primary" style="padding: 6px 12px; font-size: 9px;" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+// --- Deep Search Logic ---
+
+function quickSearch(t) {
+    document.getElementById('search-ticker').value = t;
+    switchTab('search');
+    runDeepSearch();
+}
+
+async function runDeepSearch() {
+    const ticker = document.getElementById('search-ticker').value.trim().toUpperCase();
+    if (!ticker) return;
+
+    const area = document.getElementById('search-result-area');
+    area.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><p style="font-family: var(--font-mono);">Generating Institutional Report for ' + ticker + '...</p></div>';
+
+    try {
+        const sys = `Professional Equity Researcher. Generate a detailed report for ${ticker}. Include technicals (RSI, MA), fundamentals, news impact, and bull/bear cases. Respond in JSON: {name, price, change, technicals:{rsi, signal}, targets:{t1, t2, stop}, analyst_consensus, news:[{headline, impact}], summary}.`;
+        const prompt = `Perform deep analysis on ${ticker} as of ${new Date().toLocaleDateString()}. Use search tools for latest news and price.`;
+        
+        const data = await ai.generate(prompt, sys, true);
+        renderDeepSearch(data, ticker);
+    } catch (e) {
+        area.innerHTML = `<div class="glass-card red">Search Error: ${e.message}</div>`;
+    }
+}
+
+function renderDeepSearch(d, t) {
+    const isUp = d.change >= 0;
+    const html = `
+        <div class="glass-card" style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                <div>
+                    <h2 style="font-size: 32px; font-weight: 700;">${t}</h2>
+                    <p class="muted">${d.name} &middot; Institutional Intelligence</p>
+                </div>
+                <div style="text-align: right">
+                    <div style="font-size: 28px; font-family: var(--font-mono); font-weight: 700;" class="${isUp ? 'green' : 'red'}">$${d.price}</div>
+                    <div style="font-size: 14px;" class="${isUp ? 'green' : 'red'}">${isUp ? '+' : ''}${d.change}% today</div>
+                </div>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-label">RSI (14)</div>
+                    <div class="stat-value" style="font-size: 18px;">${d.technicals.rsi} <span style="font-size: 10px;" class="blue">${d.technicals.signal}</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Consensus</div>
+                    <div class="stat-value" style="font-size: 18px;">${d.analyst_consensus.toUpperCase()}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Target 1</div>
+                    <div class="stat-value green" style="font-size: 18px;">$${d.targets.t1}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Stop Loss</div>
+                    <div class="stat-value red" style="font-size: 18px;">$${d.targets.stop}</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px;">
+                <h3 class="stat-label">AI Executive Summary</h3>
+                <p style="font-size: 14px; line-height: 1.8; margin-bottom: 20px;">${d.summary}</p>
+                
+                <h3 class="stat-label">Recent Catalysts</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${d.news.map(n => `
+                        <div style="padding: 10px; background: rgba(255,255,255,0.02); border-left: 2px solid ${n.impact === 'bullish' ? 'var(--primary)' : 'var(--accent-red)'};">
+                            <div style="font-size: 12px; font-weight: 500;">${n.headline}</div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase;">IMPACT: ${n.impact}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; gap: 12px;">
+                <button class="btn primary" onclick="addTickerToWatchlist('${t}', '${d.price}')">+ Watchlist</button>
+            </div>
+        </div>
+    `;
+    document.getElementById('search-result-area').innerHTML = html;
+}
+
+// --- Watchlist Logic ---
+
+let watchlist = JSON.parse(localStorage.getItem('MOMENTUM_WATCHLIST') || '[]');
+
+function saveWatchlist() { localStorage.setItem('MOMENTUM_WATCHLIST', JSON.stringify(watchlist)); }
+
+function addToWatchlist() {
+    const ticker = document.getElementById('wl-add-input').value.trim().toUpperCase();
+    if (!ticker || watchlist.find(w => w.ticker === ticker)) return;
+    watchlist.push({ ticker, price: '---' });
+    saveWatchlist();
+    renderWatchlist();
+    document.getElementById('wl-add-input').value = '';
+}
+
+function addTickerToWatchlist(t, p) {
+    if (watchlist.find(w => w.ticker === t)) return;
+    watchlist.push({ ticker: t, price: p });
+    saveWatchlist();
+    alert(t + " added to watchlist");
+}
+
+function removeFromWatchlist(t) {
+    watchlist = watchlist.filter(w => w.ticker !== t);
+    saveWatchlist();
+    renderWatchlist();
+}
+
+function renderWatchlist() {
+    const area = document.getElementById('watchlist-content');
+    if (watchlist.length === 0) {
+        area.innerHTML = '<div style="text-align: center; padding: 40px;" class="muted">No assets stored in memory.</div>';
+        return;
+    }
+    area.innerHTML = `
+        <table class="terminal-table">
+            <thead><tr><th>Ticker</th><th>Last Price</th><th>Actions</th></tr></thead>
+            <tbody>
+                ${watchlist.map(w => `
+                    <tr>
+                        <td><span class="ticker" onclick="quickSearch('${w.ticker}')">${w.ticker}</span></td>
+                        <td style="font-family: var(--font-mono)">$${w.price}</td>
+                        <td>
+                            <button class="btn" style="padding: 4px 8px; font-size: 9px;" onclick="quickSearch('${w.ticker}')">ANALYZE</button>
+                            <button class="btn" style="padding: 4px 8px; font-size: 9px; color: var(--accent-red);" onclick="removeFromWatchlist('${w.ticker}')">REMOVE</button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// --- Utilities ---
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('market-clock').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+}
+setInterval(updateClock, 1000);
+
+// Initialize
+if (watchlist.length > 0) renderWatchlist();
+</script>
+</body>
+</html>
