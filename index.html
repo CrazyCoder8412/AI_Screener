@@ -661,8 +661,15 @@ async function refreshDashboard() {
     btn.textContent = 'Analyzing...';
 
     try {
-        const sys = "You are an elite momentum stock analyst. Search for the top 10 high-conviction momentum stocks today. Respond ONLY with a JSON array of objects: {ticker, price, momentum_score(0-100), target, confidence(low/med/high), catalyst}.";
-        const prompt = "List 10 top momentum stocks for " + new Date().toLocaleDateString() + ". Provide specific catalysts based on latest news.";
+        const sys = `You are a High-Frequency Momentum Analyst with REAL-TIME SEARCH ACCESS. 
+        TASK: Identify the top 10 stocks showing the highest relative strength and volume momentum in the CURRENT market session.
+        TOOLS: You MUST use google_search to find live prices and today's news catalysts.
+        STRICT RULES: 
+        1. NO HYPOTHETICAL DATA. 
+        2. NO "N/A" values. 
+        3. Respond ONLY with a valid JSON array of objects: {ticker, price, momentum_score(0-100), target, confidence(low/med/high), catalyst}.`;
+        
+        const prompt = "Execute intelligence refresh for the current market session. Find 10 high-momentum tickers with real-time prices and specific news catalysts from today.";
         
         const results = await ai.generate(prompt, sys, true);
         renderDashboard(results);
@@ -713,14 +720,15 @@ async function runScreener() {
     }, 1500);
 
     try {
-        const sys = `Elite Quantitative Scout. Scan for 6-8 stocks with imminent catalysts. 
+        const sys = `Elite Quantitative Scout. Perform a multi-factor scan for stocks with IMMINENT catalysts (earnings, FDA, M&A).
+        REQUIRED: Use google_search to find ACTIVE market events from the current session.
         CRITICAL: Respond ONLY with a valid JSON array. 
         DO NOT include citations like [1] or [cite: 1] inside any JSON strings.
-        Keep descriptions concise to prevent response truncation.
+        DO NOT use hypothetical examples or "N/A" for prices.
         
         JSON Structure: [{ticker, name, catalyst_type, current_price, analyst_target, options_sentiment, volume_pulse, bull_target, bear_target, upside_pct, description, conviction_score}].`;
         
-        const prompt = "Perform a multi-factor predictive scan for " + new Date().toLocaleDateString() + ". NO CITATIONS IN STRINGS.";
+        const prompt = "Perform a multi-factor predictive scan for the current market session. Detect unusual volume and options flow using search tools.";
         
         const data = await ai.generate(prompt, sys, true, 4096);
         renderScreener(data);
