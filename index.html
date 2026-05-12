@@ -471,122 +471,104 @@ class GeminiClient {
             throw new Error("Missing API Key");
         }
 
-        const body = {
-            contents: [{ parts: [{ text: prompt }] }],
-            system_instruction: { parts: [{ text: systemInstruction }] },
-            generationConfig: {
-                temperature: 0.2,
-                topP: 0.8,
-                maxOutputTokens: maxTokens
+        const doRequest = async (withSearch) => {
+            const body = {
+                contents: [{ parts: [{ text: prompt }] }],
+                system_instruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    temperature: 0.2,
+                    topP: 0.8,
+                    maxOutputTokens: maxTokens
+                }
+            };
+            // responseMimeType is incompatible with search tools — only set without search
+            if (!withSearch) {
+                body.generationConfig.responseMimeType = "application/json";
+            } else {
+                body.tools = [{ google_search: {} }];
             }
+            const res = await fetch(`${this.endpoint}?key=${this.apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+            return data;
         };
 
-        // Constraint: Tools + responseMimeType: "application/json" is currently unsupported
-        if (!useSearch) {
-            body.generationConfig.responseMimeType = "application/json";
-        }
-
-        if (useSearch) {
-            body.tools = [{ google_search: {} }];
-        }
-
-        const response = await fetch(`${this.endpoint}?key=${this.apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-        
-        try {
-            // Gemini response path - JOIN ALL PARTS
+        const parseData = (data) => {
             const rawText = data.candidates[0].content.parts.map(p => p.text || '').join(' ');
-            
-            // Log to debug console for troubleshooting
             document.getElementById('debug-console').value = rawText;
 
-            // --- SELF-HEALING JSON PARSER ---
-            
-            // 1. Handle restarts and scrub citations
+            // Search all code-block segments from last to first for JSON
             let rawParts = rawText.split(/```(?:json)?/);
             let cleaned = "";
-            
-            // Search parts from end to beginning for a JSON-like structure
             for (let i = rawParts.length - 1; i >= 0; i--) {
                 const p = rawParts[i].trim();
-                if (p.includes('[') || p.includes('{')) {
-                    cleaned = p;
-                    break;
-                }
+                if (p.includes('[') || p.includes('{')) { cleaned = p; break; }
             }
             if (!cleaned) cleaned = rawText.trim();
 
             cleaned = cleaned
-                .replace(/\[cite:.*?\]/g, '') 
+                .replace(/\[cite:.*?\]/g, '')
                 .replace(/\[\d+(?:,\s*\d+)*\]/g, '');
 
-            // 2. Find start of structure
-            const firstBracket = cleaned.indexOf('[');
-            const firstBrace = cleaned.indexOf('{');
+            // Find start of JSON structure
+            const fb = cleaned.indexOf('[');
+            const fc = cleaned.indexOf('{');
             let startIdx = -1;
-            if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
-                startIdx = firstBracket;
-            } else if (firstBrace !== -1) {
-                startIdx = firstBrace;
-            }
+            if (fb !== -1 && (fc === -1 || fb < fc)) startIdx = fb;
+            else if (fc !== -1) startIdx = fc;
 
-            if (startIdx === -1) throw new Error("No JSON structure found in AI response");
+            if (startIdx === -1) return null; // Signal: no JSON found
+
             let segment = cleaned.substring(startIdx);
-            
-            // 3. Depth tracking and repair
-            let stack = [];
-            let inString = false;
-            let escaped = false;
-            let endIdx = -1;
-
+            let stack = [], inString = false, escaped = false, endIdx = -1;
             for (let i = 0; i < segment.length; i++) {
                 const char = segment[i];
                 if (char === '"' && !escaped) inString = !inString;
                 if (!inString) {
                     if (char === '[' || char === '{') stack.push(char === '[' ? ']' : '}');
                     if (char === ']' || char === '}') stack.pop();
-                    if (stack.length === 0 && i > 0) {
-                        endIdx = i;
-                        break;
-                    }
+                    if (stack.length === 0 && i > 0) { endIdx = i; break; }
                 }
                 escaped = (char === '\\' && !escaped);
             }
 
             let finalSegment = endIdx !== -1 ? segment.substring(0, endIdx + 1) : segment;
-
-            // 4. Auto-repair truncation
             if (endIdx === -1) {
                 if (inString) finalSegment += '"';
-                while (stack.length > 0) {
-                    finalSegment += stack.pop();
-                }
+                while (stack.length > 0) finalSegment += stack.pop();
             }
 
-            // 5. Final JSON Cleanup
             const finalJson = finalSegment
-                .replace(/,\s*([\]}])/g, '$1') // Trailing commas
-                .replace(/(\r\n|\n|\r)/gm, " "); // Newlines in strings
+                .replace(/,\s*([\]}])/g, '$1')
+                .replace(/(\r\n|\n|\r)/gm, ' ');
 
             let result = JSON.parse(finalJson);
-
-            // AUTO-MAPPING: If it's an object containing an array, return the array
             if (!Array.isArray(result) && typeof result === 'object') {
-                const arrayProp = Object.values(result).find(v => Array.isArray(v));
-                if (arrayProp) return arrayProp;
+                const arr = Object.values(result).find(v => Array.isArray(v));
+                if (arr) return arr;
             }
-            
             return result;
-        } catch (e) {
-            console.error("Failed to parse Gemini response:", e, data);
-            throw new Error("Invalid AI response format: " + e.message);
+        };
+
+        // PASS 1: Try with search (real-time data)
+        if (useSearch) {
+            const data1 = await doRequest(true);
+            const result1 = parseData(data1);
+            if (result1 !== null) return result1;
+            // PASS 2: No JSON found — retry without search, forcing JSON MIME type
+            console.warn("Search response had no JSON. Retrying without search + JSON mode...");
         }
+
+        // PASS 2 (or first pass if !useSearch)
+        const data2 = await doRequest(false);
+        const result2 = parseData(data2);
+        if (result2 !== null) return result2;
+
+        throw new Error("Invalid AI response format: No JSON structure found in AI response");
     }
 }
 
@@ -661,15 +643,13 @@ async function refreshDashboard() {
     btn.textContent = 'Analyzing...';
 
     try {
-        const sys = `You are a High-Frequency Momentum Analyst with REAL-TIME SEARCH ACCESS. 
-        TASK: Identify the top 10 stocks showing the highest relative strength and volume momentum in the CURRENT market session.
-        TOOLS: You MUST use google_search to find live prices and today's news catalysts.
-        STRICT RULES: 
-        1. NO HYPOTHETICAL DATA. 
-        2. NO "N/A" values. 
-        3. Respond ONLY with a valid JSON array of objects: {ticker, price, momentum_score(0-100), target, confidence(low/med/high), catalyst}.`;
+        const sys = `You are a High-Frequency Momentum Analyst with REAL-TIME SEARCH ACCESS.
+        TASK: Identify the top 10 stocks with the highest momentum from the most recent U.S. trading session.
+        TOOLS: Use google_search to find prices and catalysts. If the market is currently closed, use the most recent closing prices — do NOT refuse or explain.
+        OUTPUT RULE: Respond ONLY with a valid JSON array — no prose, no commentary, no disclaimers.
+        FORMAT: [{"ticker":"NVDA","price":950,"momentum_score":92,"target":1100,"confidence":"high","catalyst":"..."}]`;
         
-        const prompt = "Execute intelligence refresh for the current market session. Find 10 high-momentum tickers with real-time prices and specific news catalysts from today.";
+        const prompt = "Return a JSON array of 10 high-momentum stocks with real prices and catalysts from the most recent trading session.";
         
         const results = await ai.generate(prompt, sys, true);
         renderDashboard(results);
@@ -729,15 +709,14 @@ async function runScreener() {
     }, 1500);
 
     try {
-        const sys = `Elite Quantitative Scout. Perform a multi-factor scan for stocks with IMMINENT catalysts (earnings, FDA, M&A).
-        REQUIRED: Use google_search to find ACTIVE market events from the current session.
-        CRITICAL: Respond ONLY with a valid JSON array. 
-        DO NOT include citations like [1] or [cite: 1] inside any JSON strings.
-        DO NOT use hypothetical examples or "N/A" for prices.
+        const sys = `Elite Quantitative Scout with REAL-TIME SEARCH ACCESS.
+        TASK: Find 6-8 stocks with imminent catalysts (earnings, FDA, M&A) from the most recent or current trading session.
+        TOOLS: Use google_search for live or most recent market data. If market is closed, use last closing data — do NOT refuse.
+        OUTPUT RULE: Respond ONLY with a valid JSON array — zero prose, no disclaimers.
+        DO NOT include citations like [1] or [cite: 1] inside JSON strings.
+        FORMAT: [{"ticker":"X","name":"Company","catalyst_type":"Earnings Beat","current_price":100,"analyst_target":130,"options_sentiment":"Bullish","volume_pulse":"3x Average","bull_target":150,"bear_target":80,"upside_pct":50,"description":"...","conviction_score":85}]`;
         
-        JSON Structure: [{ticker, name, catalyst_type, current_price, analyst_target, options_sentiment, volume_pulse, bull_target, bear_target, upside_pct, description, conviction_score}].`;
-        
-        const prompt = "Perform a multi-factor predictive scan for the current market session. Detect unusual volume and options flow using search tools.";
+        const prompt = "Return a JSON array of 6-8 stocks with imminent catalysts and real prices from the most recent trading session.";
         
         const data = await ai.generate(prompt, sys, true, 4096);
         renderScreener(data);
