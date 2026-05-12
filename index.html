@@ -471,17 +471,20 @@ class GeminiClient {
             throw new Error("Missing API Key");
         }
 
-        const doRequest = async (withSearch) => {
+        const doRequest = async (withSearch, overridePrompt = null, overrideSys = null) => {
             const body = {
-                contents: [{ parts: [{ text: prompt }] }],
-                system_instruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ parts: [{ text: overridePrompt || prompt }] }],
                 generationConfig: {
-                    temperature: 0.2,
+                    temperature: withSearch ? 0.2 : 0.1,
                     topP: 0.8,
                     maxOutputTokens: maxTokens
                 }
             };
-            // responseMimeType is incompatible with search tools — only set without search
+            if (overrideSys !== null) {
+                body.system_instruction = { parts: [{ text: overrideSys }] };
+            } else if (systemInstruction) {
+                body.system_instruction = { parts: [{ text: systemInstruction }] };
+            }
             if (!withSearch) {
                 body.generationConfig.responseMimeType = "application/json";
             } else {
@@ -501,7 +504,7 @@ class GeminiClient {
             const rawText = data.candidates[0].content.parts.map(p => p.text || '').join(' ');
             document.getElementById('debug-console').value = rawText;
 
-            // Search all code-block segments from last to first for JSON
+            // Scan segments from last to first for a JSON structure
             let rawParts = rawText.split(/```(?:json)?/);
             let cleaned = "";
             for (let i = rawParts.length - 1; i >= 0; i--) {
@@ -509,19 +512,16 @@ class GeminiClient {
                 if (p.includes('[') || p.includes('{')) { cleaned = p; break; }
             }
             if (!cleaned) cleaned = rawText.trim();
-
             cleaned = cleaned
                 .replace(/\[cite:.*?\]/g, '')
                 .replace(/\[\d+(?:,\s*\d+)*\]/g, '');
 
-            // Find start of JSON structure
             const fb = cleaned.indexOf('[');
             const fc = cleaned.indexOf('{');
             let startIdx = -1;
             if (fb !== -1 && (fc === -1 || fb < fc)) startIdx = fb;
             else if (fc !== -1) startIdx = fc;
-
-            if (startIdx === -1) return null; // Signal: no JSON found
+            if (startIdx === -1) return null;
 
             let segment = cleaned.substring(startIdx);
             let stack = [], inString = false, escaped = false, endIdx = -1;
@@ -535,17 +535,14 @@ class GeminiClient {
                 }
                 escaped = (char === '\\' && !escaped);
             }
-
             let finalSegment = endIdx !== -1 ? segment.substring(0, endIdx + 1) : segment;
             if (endIdx === -1) {
                 if (inString) finalSegment += '"';
                 while (stack.length > 0) finalSegment += stack.pop();
             }
-
             const finalJson = finalSegment
                 .replace(/,\s*([\]}])/g, '$1')
                 .replace(/(\r\n|\n|\r)/gm, ' ');
-
             let result = JSON.parse(finalJson);
             if (!Array.isArray(result) && typeof result === 'object') {
                 const arr = Object.values(result).find(v => Array.isArray(v));
@@ -554,21 +551,34 @@ class GeminiClient {
             return result;
         };
 
-        // PASS 1: Try with search (real-time data)
+        // PASS 1: With google_search for real-time grounding
         if (useSearch) {
-            const data1 = await doRequest(true);
-            const result1 = parseData(data1);
-            if (result1 !== null) return result1;
-            // PASS 2: No JSON found — retry without search, forcing JSON MIME type
-            console.warn("Search response had no JSON. Retrying without search + JSON mode...");
+            try {
+                const d1 = await doRequest(true);
+                const r1 = parseData(d1);
+                if (r1 !== null) return r1;
+            } catch(e) { console.warn("Pass 1 error:", e.message); }
+            console.warn("Pass 1 had no JSON. Trying Pass 2...");
         }
 
-        // PASS 2 (or first pass if !useSearch)
-        const data2 = await doRequest(false);
-        const result2 = parseData(data2);
-        if (result2 !== null) return result2;
+        // PASS 2: No search, responseMimeType forces strict JSON, same prompts
+        try {
+            const d2 = await doRequest(false);
+            const r2 = parseData(d2);
+            if (r2 !== null) return r2;
+        } catch(e) { console.warn("Pass 2 error:", e.message); }
+        console.warn("Pass 2 had no JSON. Trying Pass 3 (bare prompt)...");
 
-        throw new Error("Invalid AI response format: No JSON structure found in AI response");
+        // PASS 3: Stripped system instruction, JSON API persona, hard JSON enforcement
+        const bareSys = "You are a JSON API endpoint. Your entire response must be a valid JSON array starting with '[' and ending with ']'. Never output prose or explanations.";
+        const barePrompt = `${prompt}\n\nCRITICAL: Output ONLY a raw JSON array. Do not write any sentences before or after it.`;
+        try {
+            const d3 = await doRequest(false, barePrompt, bareSys);
+            const r3 = parseData(d3);
+            if (r3 !== null) return r3;
+        } catch(e) { console.warn("Pass 3 error:", e.message); }
+
+        throw new Error("All 3 parsing attempts failed. Open ⚙️ settings to see the raw AI response in the debug console.");
     }
 }
 
