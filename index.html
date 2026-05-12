@@ -683,23 +683,32 @@ async function refreshDashboard() {
 
 function renderDashboard(stocks) {
     const tbody = document.getElementById('dashboard-tbody');
-    tbody.innerHTML = stocks.map(s => `
+    tbody.innerHTML = stocks.map(s => {
+        // Null-safe field access
+        const price = s.price ?? s.current_price ?? 'N/A';
+        const score = Math.min(Math.max(Number(s.momentum_score) || 50, 0), 100);
+        const target = s.target ?? s.analyst_target ?? 'N/A';
+        const conf = (s.confidence ?? s.conviction ?? 'med').toString().toUpperCase();
+        const catalyst = s.catalyst ?? s.description ?? '';
+        const confColor = conf.startsWith('H') ? 'green' : conf.startsWith('L') ? 'red' : 'amber';
+        return `
         <tr>
             <td><span class="ticker" onclick="quickSearch('${s.ticker}')">${s.ticker}</span></td>
-            <td style="font-family: var(--font-mono)">$${s.price}</td>
+            <td style="font-family: var(--font-mono)">$${price}</td>
             <td>
                 <div style="height: 4px; width: 60px; background: var(--border); border-radius: 2px;">
-                    <div style="height: 100%; width: ${s.momentum_score}%; background: var(--primary); border-radius: 2px;"></div>
+                    <div style="height: 100%; width: ${score}%; background: var(--primary); border-radius: 2px;"></div>
                 </div>
             </td>
-            <td class="green" style="font-family: var(--font-mono)">$${s.target}</td>
-            <td><span class="muted" style="font-size: 10px; font-family: var(--font-mono)">${s.confidence.toUpperCase()}</span></td>
-            <td style="font-size: 11px; color: var(--text-dim); max-width: 200px;">${s.catalyst}</td>
+            <td class="green" style="font-family: var(--font-mono)">$${target}</td>
+            <td><span class="${confColor}" style="font-size: 10px; font-family: var(--font-mono)">${conf}</span></td>
+            <td style="font-size: 11px; color: var(--text-dim); max-width: 200px;">${catalyst}</td>
             <td><button class="btn" style="padding: 4px 8px; font-size: 9px;" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button></td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
     
-    document.getElementById('conviction-count').textContent = stocks.filter(s => s.confidence.toLowerCase() === 'high').length;
+    const highConv = stocks.filter(s => (s.confidence ?? s.conviction ?? '').toString().toLowerCase().startsWith('h')).length;
+    document.getElementById('conviction-count').textContent = highConv;
 }
 
 // --- Screener Logic ---
@@ -744,19 +753,30 @@ async function runScreener() {
 function renderScreener(data) {
     const area = document.getElementById('screener-results');
     area.innerHTML = data.map(s => {
-        const range = s.bull_target - s.bear_target;
-        const currentPos = ((s.current_price - s.bear_target) / range) * 100;
-        const safePos = Math.min(Math.max(currentPos, 5), 95);
+        // Null-safe field normalization
+        const bull = Number(s.bull_target) || 0;
+        const bear = Number(s.bear_target) || 0;
+        const price = Number(s.current_price) || 0;
+        const upside = s.upside_pct ?? (bull > 0 && price > 0 ? (((bull - price) / price) * 100).toFixed(1) : 'N/A');
+        const sentiment = s.options_sentiment ?? 'N/A';
+        const isBull = String(sentiment).toLowerCase().includes('bull');
+        const volume = s.volume_pulse ?? 'N/A';
+        const desc = s.description ?? s.catalyst ?? '';
+        const analystTarget = s.analyst_target ?? bull;
+        const name = s.name ?? s.ticker;
+
+        const range = bull - bear;
+        const safePos = range > 0 ? Math.min(Math.max(((price - bear) / range) * 100, 5), 95) : 50;
 
         return `
         <div class="glass-card">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                 <div>
                     <span class="ticker" style="font-size: 20px;" onclick="quickSearch('${s.ticker}')">${s.ticker}</span>
-                    <div style="font-size: 11px; color: var(--text-dim);">${s.name}</div>
+                    <div style="font-size: 11px; color: var(--text-dim);">${name}</div>
                 </div>
                 <div style="text-align: right;">
-                    <div class="green" style="font-family: var(--font-mono); font-weight: 700; font-size: 18px;">+${s.upside_pct}%</div>
+                    <div class="green" style="font-family: var(--font-mono); font-weight: 700; font-size: 18px;">+${upside}%</div>
                     <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase;">Est. Upside</div>
                 </div>
             </div>
@@ -764,37 +784,36 @@ function renderScreener(data) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
                 <div style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
                     <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Options Flow</div>
-                    <div style="font-size: 11px; font-weight: 600;" class="${String(s.options_sentiment).toLowerCase().includes('bull') ? 'green' : 'red'}">${s.options_sentiment}</div>
+                    <div style="font-size: 11px; font-weight: 600;" class="${isBull ? 'green' : 'red'}">${sentiment}</div>
                 </div>
                 <div style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
                     <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Volume Surge</div>
-                    <div style="font-size: 11px; font-weight: 600; color: var(--accent-blue);">${s.volume_pulse}</div>
+                    <div style="font-size: 11px; font-weight: 600; color: var(--accent-blue);">${volume}</div>
                 </div>
             </div>
 
-            <p style="font-size: 12px; line-height: 1.5; color: var(--text-main); margin-bottom: 16px; min-height: 54px;">${s.description}</p>
+            <p style="font-size: 12px; line-height: 1.5; color: var(--text-main); margin-bottom: 16px; min-height: 54px;">${desc}</p>
 
             <div style="margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-bottom: 4px;">
-                    <span>BEAR: $${s.bear_target}</span>
-                    <span>BULL: $${s.bull_target}</span>
+                    <span>BEAR: $${bear}</span>
+                    <span>BULL: $${bull}</span>
                 </div>
                 <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative; overflow: hidden;">
                     <div style="position: absolute; height: 100%; left: 0; width: 100%; background: linear-gradient(90deg, var(--accent-red) 0%, var(--primary) 100%); opacity: 0.2;"></div>
                     <div style="position: absolute; height: 100%; width: 2px; background: white; left: ${safePos}%; box-shadow: 0 0 8px white;"></div>
                 </div>
-                <div style="text-align: center; font-size: 9px; margin-top: 4px;" class="muted">Current: $${s.current_price}</div>
+                <div style="text-align: center; font-size: 9px; margin-top: 4px;" class="muted">Current: $${price > 0 ? price : 'N/A'}</div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px;">
                 <div>
                     <div style="font-size: 8px; color: var(--text-muted); text-transform: uppercase;">Analyst Target</div>
-                    <div style="font-size: 12px; font-family: var(--font-mono); font-weight: 700;">$${s.analyst_target}</div>
+                    <div style="font-size: 12px; font-family: var(--font-mono); font-weight: 700;">$${analystTarget}</div>
                 </div>
                 <button class="btn primary" style="padding: 6px 12px; font-size: 9px;" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button>
             </div>
-        </div>
-        `;
+        </div>`;
     }).join('');
 }
 
