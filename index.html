@@ -278,6 +278,36 @@
         .amber { color: var(--accent-amber); }
         .blue { color: var(--accent-blue); }
         .muted { color: var(--text-muted); }
+
+        /* --- Spike Score Components --- */
+        .spike-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px; border-radius: 50%;
+            font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+            border: 2px solid; flex-shrink: 0;
+        }
+        .spike-high { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 12px var(--primary-glow); }
+        .spike-med  { border-color: var(--accent-amber); color: var(--accent-amber); }
+        .spike-low  { border-color: var(--accent-red); color: var(--accent-red); }
+
+        .conviction-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+        }
+        .conviction-high { background: rgba(0,255,179,0.15); color: var(--primary); border: 1px solid var(--primary-glow); }
+        .conviction-med  { background: rgba(245,166,35,0.15); color: var(--accent-amber); border: 1px solid rgba(245,166,35,0.3); }
+        .conviction-low  { background: rgba(255,82,82,0.1);  color: var(--accent-red);   border: 1px solid rgba(255,82,82,0.2); }
+
+        .why-box {
+            background: rgba(0,255,179,0.04); border-left: 2px solid var(--primary-glow);
+            padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px;
+            font-size: 11px; color: var(--text-dim); line-height: 1.5;
+        }
+        .entry-zone {
+            background: rgba(77,159,255,0.08); border: 1px solid rgba(77,159,255,0.2);
+            border-radius: 4px; padding: 4px 8px; font-family: var(--font-mono);
+            font-size: 11px; color: var(--accent-blue);
+        }
     </style>
 </head>
 <body>
@@ -306,11 +336,11 @@
         <div id="view-dashboard" class="view active">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
                 <div>
-                    <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">Market Alpha</h1>
-                    <p style="color: var(--text-dim);">Curated momentum signals generated via Gemini 2.0 Flash</p>
+                    <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">🔥 Spike Radar</h1>
+                    <p style="color: var(--text-dim);">High-conviction setups with 20%+ upside potential — volume surge + hard catalyst required</p>
                 </div>
                 <button id="refresh-dash-btn" class="btn primary" onclick="refreshDashboard()">
-                    ⚡ Run Intelligence Refresh
+                    ⚡ Run Spike Scan
                 </button>
             </div>
 
@@ -328,9 +358,10 @@
                             <tr>
                                 <th>Ticker</th>
                                 <th>Price</th>
-                                <th>Momentum</th>
-                                <th>Target</th>
-                                <th>Confidence</th>
+                                <th>Spike Score</th>
+                                <th>+20% Target</th>
+                                <th>Vol Surge</th>
+                                <th>Conviction</th>
                                 <th>Catalyst</th>
                                 <th>Action</th>
                             </tr>
@@ -346,10 +377,10 @@
         <!-- Screener View -->
         <div id="view-screener" class="view">
             <div style="text-align: center; margin-bottom: 40px;">
-                <h1 style="font-size: 24px; margin-bottom: 10px;">Pre-Spike Intelligence</h1>
-                <p style="color: var(--text-dim); max-width: 500px; margin: 0 auto;">Scanning for earnings whispers, FDA approvals, and unusual options flow.</p>
+                <h1 style="font-size: 24px; margin-bottom: 10px;">🎯 Catalyst Scanner</h1>
+                <p style="color: var(--text-dim); max-width: 540px; margin: 0 auto;">Binary event detection: earnings beats, FDA PDUFAs ≤72h, M&A targets, short squeeze setups &amp; major analyst upgrades. Filter: Spike Score ≥70 &amp; Upside ≥20%.</p>
                 <div style="margin-top: 24px;">
-                    <button id="run-screener-btn" class="btn primary" onclick="runScreener()">Initialize AI Global Scan</button>
+                    <button id="run-screener-btn" class="btn primary" onclick="runScreener()">🔍 Initialize Catalyst Scan</button>
                 </div>
             </div>
             
@@ -653,15 +684,17 @@ async function refreshDashboard() {
     btn.textContent = 'Analyzing...';
 
     try {
-        const sys = `You are a High-Frequency Momentum Analyst with REAL-TIME SEARCH ACCESS.
-        TASK: Identify the top 10 stocks with the highest momentum from the most recent U.S. trading session.
-        TOOLS: Use google_search to find prices and catalysts. If the market is currently closed, use the most recent closing prices — do NOT refuse or explain.
-        OUTPUT RULE: Respond ONLY with a valid JSON array — no prose, no commentary, no disclaimers.
-        FORMAT: [{"ticker":"NVDA","price":950,"momentum_score":92,"target":1100,"confidence":"high","catalyst":"..."}]`;
-        
-        const prompt = "Return a JSON array of 10 high-momentum stocks with real prices and catalysts from the most recent trading session.";
-        
-        const results = await ai.generate(prompt, sys, true);
+        const sys = `You are a Spike Detection Algorithm with REAL-TIME SEARCH ACCESS.
+        MISSION: Find stocks that can move 20%+ in a single session based on volume spike + hard catalyst.
+        CRITERIA (ALL must apply):
+          1. Volume >= 2x the 10-day average
+          2. A specific, verifiable catalyst today: earnings beat, FDA decision, M&A, short squeeze, or major upgrade
+          3. Upside to 20% target is realistic based on price structure
+        TOOLS: Use google_search to find real prices and news. If market closed, use last close.
+        OUTPUT: Return ONLY a JSON array of exactly 8 objects. Zero prose.
+        SCHEMA: [{"ticker":"X","name":"Company","current_price":50,"spike_score":85,"volume_surge":"3.2x","target_20pct":60,"stop_loss":46,"entry_zone":"49-51","conviction":"HIGH","catalyst":"Earnings beat Q1 EPS $1.20 vs $0.95 est","why_20pct":"Strong volume + analyst target upgrades cluster near $62"}]`;
+        const prompt = `Return a JSON array of exactly 8 pre-spike setups from the most recent trading session. Each must have volume >= 2x avg and a hard catalyst. Use real prices from search.`;
+        const results = await ai.generate(prompt, sys, true, 6000);
         renderDashboard(results);
     } catch (e) {
         alert("Refresh failed: " + e.message);
@@ -674,31 +707,28 @@ async function refreshDashboard() {
 function renderDashboard(stocks) {
     const tbody = document.getElementById('dashboard-tbody');
     tbody.innerHTML = stocks.map(s => {
-        // Null-safe field access
-        const price = s.price ?? s.current_price ?? 'N/A';
-        const score = Math.min(Math.max(Number(s.momentum_score) || 50, 0), 100);
-        const target = s.target ?? s.analyst_target ?? 'N/A';
-        const conf = (s.confidence ?? s.conviction ?? 'med').toString().toUpperCase();
+        const price = s.current_price ?? s.price ?? 'N/A';
+        const score = Math.min(Math.max(Number(s.spike_score ?? s.momentum_score) || 50, 0), 100);
+        const target20 = s.target_20pct ?? s.target ?? s.analyst_target ?? 'N/A';
+        const volSurge = s.volume_surge ?? s.volume_pulse ?? 'N/A';
+        const conv = (s.conviction ?? s.confidence ?? 'MED').toString().toUpperCase();
         const catalyst = s.catalyst ?? s.description ?? '';
-        const confColor = conf.startsWith('H') ? 'green' : conf.startsWith('L') ? 'red' : 'amber';
+        const convClass = conv.startsWith('H') ? 'conviction-high' : conv.startsWith('L') ? 'conviction-low' : 'conviction-med';
+        const spikeClass = score >= 80 ? 'spike-high' : score >= 60 ? 'spike-med' : 'spike-low';
         return `
         <tr>
-            <td><span class="ticker" onclick="quickSearch('${s.ticker}')">${s.ticker}</span></td>
-            <td style="font-family: var(--font-mono)">$${price}</td>
-            <td>
-                <div style="height: 4px; width: 60px; background: var(--border); border-radius: 2px;">
-                    <div style="height: 100%; width: ${score}%; background: var(--primary); border-radius: 2px;"></div>
-                </div>
-            </td>
-            <td class="green" style="font-family: var(--font-mono)">$${target}</td>
-            <td><span class="${confColor}" style="font-size: 10px; font-family: var(--font-mono)">${conf}</span></td>
-            <td style="font-size: 11px; color: var(--text-dim); max-width: 200px;">${catalyst}</td>
-            <td><button class="btn" style="padding: 4px 8px; font-size: 9px;" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button></td>
+            <td><span class="ticker" onclick="quickSearch('${s.ticker}')">${s.ticker}</span><div style="font-size:9px;color:var(--text-muted);margin-top:2px">${s.name ?? ''}</div></td>
+            <td style="font-family:var(--font-mono)">$${price}</td>
+            <td><div class="spike-badge ${spikeClass}">${score}</div></td>
+            <td class="green" style="font-family:var(--font-mono);font-weight:700">$${target20}</td>
+            <td style="font-family:var(--font-mono);color:var(--accent-blue)">${volSurge}</td>
+            <td><span class="conviction-badge ${convClass}">${conv}</span></td>
+            <td style="font-size:11px;color:var(--text-dim);max-width:220px">${catalyst}</td>
+            <td><button class="btn" style="padding:4px 8px;font-size:9px" onclick="quickSearch('${s.ticker}')">ANALYZE</button></td>
         </tr>`;
     }).join('');
-    
-    const highConv = stocks.filter(s => (s.confidence ?? s.conviction ?? '').toString().toLowerCase().startsWith('h')).length;
-    document.getElementById('conviction-count').textContent = highConv;
+    const high = stocks.filter(s => (s.conviction ?? s.confidence ?? '').toString().toUpperCase().startsWith('H')).length;
+    document.getElementById('conviction-count').textContent = high;
 }
 
 // --- Screener Logic ---
@@ -719,16 +749,18 @@ async function runScreener() {
     }, 1500);
 
     try {
-        const sys = `Elite Quantitative Scout with REAL-TIME SEARCH ACCESS.
-        TASK: Find 6-8 stocks with imminent catalysts (earnings, FDA, M&A) from the most recent or current trading session.
-        TOOLS: Use google_search for live or most recent market data. If market is closed, use last closing data — do NOT refuse.
-        OUTPUT RULE: Respond ONLY with a valid JSON array — zero prose, no disclaimers.
-        DO NOT include citations like [1] or [cite: 1] inside JSON strings.
-        FORMAT: [{"ticker":"X","name":"Company","catalyst_type":"Earnings Beat","current_price":100,"analyst_target":130,"options_sentiment":"Bullish","volume_pulse":"3x Average","bull_target":150,"bear_target":80,"upside_pct":50,"description":"...","conviction_score":85}]`;
-        
-        const prompt = "Return a JSON array of 6-8 stocks with imminent catalysts and real prices from the most recent trading session.";
-        
-        const data = await ai.generate(prompt, sys, true, 4096);
+        const sys = `You are a Binary Catalyst Detection Engine with REAL-TIME SEARCH ACCESS.
+        MISSION: Find 6 stocks with an imminent binary catalyst that can cause a 20%+ single-session move.
+        CATALYST TYPES (pick from): Earnings Surprise, FDA PDUFA <=72h, M&A Target, Short Squeeze, Major Analyst Upgrade.
+        HARD RULES:
+          - spike_score must be >= 70 (volume + catalyst + options flow composite)
+          - upside_pct must be >= 20
+          - current_price must be real (from search). No N/A.
+        TOOLS: Use google_search. If market is closed, use last close prices.
+        OUTPUT: Return ONLY a raw JSON array of exactly 6 objects. Zero commentary.
+        SCHEMA: [{"ticker":"X","name":"Company Inc.","catalyst_type":"Earnings Beat","current_price":100,"analyst_target":140,"options_sentiment":"Aggressive Call Buying","volume_pulse":"4.1x Average","bull_target":150,"bear_target":85,"upside_pct":40,"spike_score":88,"entry_zone":"98-102","stop_loss":91,"conviction":"HIGH","description":"Q1 EPS $2.10 vs $1.75 est. Raised full-year guidance.","why_20pct":"Post-earnings gap history averages 28% on beats of this magnitude."}]`;
+        const prompt = `Find 6 stocks with binary catalysts that can move 20%+ this session. Use google_search for real prices and news. Return ONLY the JSON array.`;
+        const data = await ai.generate(prompt, sys, true, 6000);
         renderScreener(data);
     } catch (e) {
         alert("Screener failed: " + e.message);
@@ -742,65 +774,75 @@ async function runScreener() {
 function renderScreener(data) {
     const area = document.getElementById('screener-results');
     area.innerHTML = data.map(s => {
-        // Null-safe field normalization
         const bull = Number(s.bull_target) || 0;
         const bear = Number(s.bear_target) || 0;
         const price = Number(s.current_price) || 0;
-        const upside = s.upside_pct ?? (bull > 0 && price > 0 ? (((bull - price) / price) * 100).toFixed(1) : 'N/A');
+        const upside = Number(s.upside_pct) || (bull > 0 && price > 0 ? (((bull - price) / price) * 100).toFixed(1) : 0);
+        const score = Math.min(Math.max(Number(s.spike_score ?? s.conviction_score) || 70, 0), 100);
         const sentiment = s.options_sentiment ?? 'N/A';
-        const isBull = String(sentiment).toLowerCase().includes('bull');
+        const isBull = String(sentiment).toLowerCase().includes('bull') || String(sentiment).toLowerCase().includes('call');
         const volume = s.volume_pulse ?? 'N/A';
         const desc = s.description ?? s.catalyst ?? '';
+        const why = s.why_20pct ?? '';
+        const entry = s.entry_zone ?? '';
+        const stop = s.stop_loss ?? s.bear_target ?? '';
         const analystTarget = s.analyst_target ?? bull;
         const name = s.name ?? s.ticker;
-
+        const conv = (s.conviction ?? s.confidence ?? 'MED').toString().toUpperCase();
+        const convClass = conv.startsWith('H') ? 'conviction-high' : conv.startsWith('L') ? 'conviction-low' : 'conviction-med';
+        const spikeClass = score >= 80 ? 'spike-high' : score >= 60 ? 'spike-med' : 'spike-low';
         const range = bull - bear;
         const safePos = range > 0 ? Math.min(Math.max(((price - bear) / range) * 100, 5), 95) : 50;
 
         return `
-        <div class="glass-card">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <div class="glass-card" style="border-color: ${conv.startsWith('H') ? 'rgba(0,255,179,0.2)' : 'var(--border)'}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div class="spike-badge ${spikeClass}">${score}</div>
+                    <div>
+                        <span class="ticker" style="font-size:20px" onclick="quickSearch('${s.ticker}')">${s.ticker}</span>
+                        <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${name}</div>
+                        <div style="margin-top:4px"><span class="conviction-badge ${convClass}">${conv}</span></div>
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <div class="green" style="font-family:var(--font-mono);font-weight:700;font-size:20px">+${upside}%</div>
+                    <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase">Est. Upside</div>
+                    ${entry ? `<div class="entry-zone" style="margin-top:6px">Entry: $${entry}</div>` : ''}
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+                <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:4px;border:1px solid var(--border)">
+                    <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase">Options Flow</div>
+                    <div style="font-size:11px;font-weight:600" class="${isBull ? 'green' : 'red'}">${sentiment}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:4px;border:1px solid var(--border)">
+                    <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase">Volume Surge</div>
+                    <div style="font-size:11px;font-weight:600;color:var(--accent-blue)">${volume}</div>
+                </div>
+            </div>
+
+            <p style="font-size:12px;line-height:1.5;color:var(--text-main);margin-bottom:8px">${desc}</p>
+            ${why ? `<div class="why-box">💡 <strong>Why 20%?</strong> ${why}</div>` : ''}
+
+            <div style="margin:14px 0">
+                <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-bottom:4px">
+                    <span>STOP: $${stop}</span><span>BULL: $${bull}</span>
+                </div>
+                <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;position:relative;overflow:hidden">
+                    <div style="position:absolute;height:100%;left:0;width:100%;background:linear-gradient(90deg,var(--accent-red) 0%,var(--primary) 100%);opacity:0.2"></div>
+                    <div style="position:absolute;height:100%;width:2px;background:white;left:${safePos}%;box-shadow:0 0 8px white"></div>
+                </div>
+                <div style="text-align:center;font-size:9px;margin-top:4px" class="muted">Current: $${price > 0 ? price : 'N/A'}</div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:12px">
                 <div>
-                    <span class="ticker" style="font-size: 20px;" onclick="quickSearch('${s.ticker}')">${s.ticker}</span>
-                    <div style="font-size: 11px; color: var(--text-dim);">${name}</div>
+                    <div style="font-size:8px;color:var(--text-muted);text-transform:uppercase">Analyst Target</div>
+                    <div style="font-size:12px;font-family:var(--font-mono);font-weight:700">$${analystTarget}</div>
                 </div>
-                <div style="text-align: right;">
-                    <div class="green" style="font-family: var(--font-mono); font-weight: 700; font-size: 18px;">+${upside}%</div>
-                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase;">Est. Upside</div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
-                <div style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
-                    <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Options Flow</div>
-                    <div style="font-size: 11px; font-weight: 600;" class="${isBull ? 'green' : 'red'}">${sentiment}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
-                    <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Volume Surge</div>
-                    <div style="font-size: 11px; font-weight: 600; color: var(--accent-blue);">${volume}</div>
-                </div>
-            </div>
-
-            <p style="font-size: 12px; line-height: 1.5; color: var(--text-main); margin-bottom: 16px; min-height: 54px;">${desc}</p>
-
-            <div style="margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-bottom: 4px;">
-                    <span>BEAR: $${bear}</span>
-                    <span>BULL: $${bull}</span>
-                </div>
-                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; height: 100%; left: 0; width: 100%; background: linear-gradient(90deg, var(--accent-red) 0%, var(--primary) 100%); opacity: 0.2;"></div>
-                    <div style="position: absolute; height: 100%; width: 2px; background: white; left: ${safePos}%; box-shadow: 0 0 8px white;"></div>
-                </div>
-                <div style="text-align: center; font-size: 9px; margin-top: 4px;" class="muted">Current: $${price > 0 ? price : 'N/A'}</div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px;">
-                <div>
-                    <div style="font-size: 8px; color: var(--text-muted); text-transform: uppercase;">Analyst Target</div>
-                    <div style="font-size: 12px; font-family: var(--font-mono); font-weight: 700;">$${analystTarget}</div>
-                </div>
-                <button class="btn primary" style="padding: 6px 12px; font-size: 9px;" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button>
+                <button class="btn primary" style="padding:6px 12px;font-size:9px" onclick="quickSearch('${s.ticker}')">DEEP ANALYZE</button>
             </div>
         </div>`;
     }).join('');
